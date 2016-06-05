@@ -569,14 +569,11 @@ struct opbot : CommandHandlerBase<opbot>, Module
 
         Membership::ptr mem = m->source.client->find_membership(channelname);
         if (mem && mem->has_mode('o')) {
-            if (m->command == "PART" && m->source.destination == channelname )
+            if (m->command == "KICK" && m->source.destination == channelname && m->source.name == "ChanServ")
             {
-                if (m->args.size() >= 1 && m->args[0].substr(0,9) == "requested")
-                {
-                    // user was ejected from the channel with REMOVE
-                    Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + m->source.client->nick()  + "was removed from channel - will not reop");
-                    return;
-                }
+                // user was ejected from the channel by ChanServ (akick?)
+				Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + m->source.client->nick()  + "was akicked from channel - will not reop");
+				return;
             } else if (m->command == "QUIT") {
                 if (!m->source.destination.empty())
                 {
@@ -588,7 +585,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
                         return;
                     }
                 }
-            } else {
+            } else if (m->command != "PART" || m->source.destination != channelname) {
                 // Wrong channel, or something odd happened
                 return;
             }
@@ -636,7 +633,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
         }
     }
 
-    CommandHolder add, remove, list, info, check, op, clear, change, match_client, shutdown, join, part, quit, nick;
+    CommandHolder add, remove, list, info, check, op, clear, change, match_client, shutdown, join, part, kick, quit, nick;
     EventHolder check_event;
     HelpTopicHolder opbothelp, ophelp, checkhelp, matchhelp, addhelp, removehelp, edithelp;
     HelpIndexHolder index;
@@ -670,6 +667,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
                             &opbot::do_match);
         quit = add_handler(filter_command_type("QUIT", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
         part = add_handler(filter_command_type("PART", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
+        kick = add_handler(filter_command_type("KICK", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
         join = add_handler(filter_command_type("JOIN", sourceinfo::RawIrc),&opbot::irc_join,true);
         nick = add_handler(filter_command_type("NICK", sourceinfo::RawIrc),&opbot::irc_nick,true);
 
