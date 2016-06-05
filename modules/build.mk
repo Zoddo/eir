@@ -2,6 +2,7 @@ MODULES = \
 	  config \
 	  echo \
 	  help \
+	  opbot \
 	  privileges \
 	  snote \
 	  userlist \
