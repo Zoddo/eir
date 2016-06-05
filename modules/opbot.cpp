@@ -250,7 +250,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
         for (ValueArray::iterator it = dno.begin(); it != dno.end(); ++it)
         {
             Bot *bot = BotManager::get_instance()->find((*it)["bot"]);
-            m->source.reply((*it)["mask"] + " (" + (*it)["reason"] + ") (added by " + 
+            m->source.reply((*it)["mask"] + " (" + (*it)["reason"] + ") (added by " +
                     (*it)["setter"] + " on " + format_time(bot, (*it)["set"].Int()) +
                     ", expires " + format_time(bot, (*it)["expires"].Int()) + ")");
         }
@@ -258,7 +258,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
         m->source.reply("*** End of DNO list");
     }
 
-    void build_op_lists(Channel::ptr channel, 
+    void build_op_lists(Channel::ptr channel,
                            std::list<std::string> *toop,
                            std::list<std::string> *tonotop)
     {
@@ -304,8 +304,19 @@ struct opbot : CommandHandlerBase<opbot>, Module
 
         build_op_lists(channel, &toop, &tonotop);
 
-        m->source.reply("Needing op: " + paludis::join(toop.begin(), toop.end(), " "));
-        m->source.reply("Not opping: " + paludis::join(tonotop.begin(), tonotop.end(), " "));
+		if (!toop.empty())
+		{
+			m->source.reply("Needing op: " + paludis::join(toop.begin(), toop.end(), " "));
+		}
+		else
+		{
+			m->source.reply("Everybody is opped.");
+		}
+
+        if (!tonotop.empty())
+		{
+			m->source.reply("Not opping: " + paludis::join(tonotop.begin(), tonotop.end(), " "));
+		}
     }
 
     void do_op(const Message *m)
