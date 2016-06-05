@@ -66,14 +66,14 @@ namespace
         "of a currently visible user is given, entries matching that user are shown. Otherwise, it is interpreted as "
         "a hostmask.";
     const char *help_add =
-        "\002add <mask> [time] <reason>\002. Adds a DNO entry <mask>, expiring in <time>, with comment <reason>.\n"
+        "\002add <mask> [~time] <reason>\002. Adds a DNO entry <mask>, expiring in <time>, with comment <reason>.\n"
         "If \037time\037 is not specified, the default_op_expiry setting is used. \037time\037 may "
         "be zero, in which case the entry will not expire. \037reason\037 may be empty.";
     const char *help_remove =
         "\002remove <mask>\002. Removes all entries from the DNO list that match the given mask.\n"
         "Note that 'remove *' will clear the list.";
     const char *help_edit =
-        "\002edit <mask> [time] [reason]\002. Edits the expiry time and/or comment of an existing DNO entry. If "
+        "\002edit <mask> [~time] [reason]\002. Edits the expiry time and/or comment of an existing DNO entry. If "
         "\037time\037 is given but \037reason\037 is not, then only the expiry will be changed. Similarly if "
         "\037reason\037 is given but \037time\037 is not, then the expiry will be left unchanged.";
 
