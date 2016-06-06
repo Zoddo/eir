@@ -493,6 +493,38 @@ struct opbot : CommandHandlerBase<opbot>, Module
         }
     }
 
+    std::string build_ban_mask (Client::ptr c)
+    {
+        if ((c->host().find("gateway/") == 0 ||
+                   c->host().find("conference/") == 0 ||
+                   c->host().find("nat/") == 0 ) &&
+				   c->host().find("gateway/tor-sasl/") != 0)
+        {
+            // gateway user
+            std::string suffix=c->nuh().substr(c->nuh().find_last_of("/"));
+            if (suffix=="/session" || suffix.substr(0,3) == "/x-" || suffix.substr(0,4)== "/ip.")
+            {
+                // strip session ID
+                return "*!*" + c->user() + "@" + c->host().substr(0,c->host().find_last_of("/")) + "/*";
+            } else {
+                // got an unrecognised suffix - return default mask
+                return "*!*@" + c->host();
+            }
+        } else {
+            return "*!*@" + c->host();
+        }
+    }
+
+	void do_add_internal(Bot *b, const std::string mask, const std::string duration, const std::string reason)
+	{
+		time_t expires = parse_time(duration);
+
+		if (expires != 0)
+			expires += time(NULL);
+
+		dno.push_back(opentry(b->name(), mask, b->name(), reason, time(NULL), expires));
+	}
+
 
 
     void irc_join(const Message *m)
@@ -549,6 +581,80 @@ struct opbot : CommandHandlerBase<opbot>, Module
             }
         }
         do_removals(lostops);
+    }
+
+    void irc_mode(const Message *m)
+    {
+        std::string channelname = m->bot->get_setting("opbot_channel");
+
+        if (!m->source.client)
+            return;
+		if (m->source.destination != channelname)
+            return;
+        if (m->source.name == m->bot->nick())
+            return;
+
+		Channel::ptr channel = m->bot->find_channel(channelname);
+        if (!channel)
+            return;
+
+		bool is_protected = m->source.client->privs().has_privilege("admin") || m->source.client->privs().has_privilege("opadmin") ||
+							m->source.client->privs().has_privilege("opprotected");
+
+		if (m->args[0] == "remove" && m->args[1] == "o")
+		{
+			if (m->args[2] == m->bot->nick())
+			{
+				// The bot has been deopped
+				if (!is_protected)
+				{
+					std::string banmask = build_ban_mask(m->source.client);
+					std::string akickmask = (!m->source.client->account().empty()) ? m->source.client->account() : banmask;
+					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
+					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
+												m->source.name + " !T " + akicktime + " Deopping the bot";
+					m->bot->send(akickcommand);
+
+					std::string dnotime = m->bot->get_setting_with_default("opbot_abuse_dno_time", "30d");
+					do_add_internal(m->bot, banmask, dnotime, "Deopping the bot");
+
+					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Debug, "*** Akicking " + m->source.name + " (bot deopped)");
+				}
+				std::string opcommand = "PRIVMSG ChanServ :OP " + channelname;
+				m->bot->send(opcommand);
+
+				Logger::get_instance()->Log(m->bot, m->source.client, Logger::Warning, "*** " + m->source.name + " has deopped the bot");
+			} else if (!is_protected) {
+				// The event is called with Message::first, so we can check old modes
+				Membership::ptr mem = channel->find_member(m->args[2]);
+				if (mem && m->source.client != mem->client && mem->has_mode('o')) {
+					std::string opcommand = "MODE " + channelname + " -o+o " + m->source.name + " " + m->args[2];
+					m->bot->send(opcommand);
+
+					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Warning, "*** " + m->source.name + " has deopped " + m->args[2]);
+				}
+			}
+		} else if (m->args[0] == "add" && m->args[1] == "b") {
+			if (mask_match(m->args[2], m->bot->me()->nuh()))
+			{
+				if (!is_protected)
+				{
+					std::string banmask = build_ban_mask(m->source.client);
+					std::string akickmask = (!m->source.client->account().empty()) ? m->source.client->account() : banmask;
+					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
+					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
+												m->source.name + " !T " + akicktime + " Banning the bot";
+					m->bot->send(akickcommand);
+
+					std::string dnotime = m->bot->get_setting_with_default("opbot_abuse_dno_time", "30d");
+					do_add_internal(m->bot, banmask, dnotime, "Banning the bot");
+
+					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Debug, "*** Akicking " + m->source.name + " (bot banned)");
+				}
+
+				std::string opcommand = "PRIVMSG ChanServ :UNBAN " + channelname;
+			}
+		}
     }
 
     void irc_depart (const Message *m)
@@ -633,7 +739,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
         }
     }
 
-    CommandHolder add, remove, list, info, check, op, clear, change, match_client, shutdown, join, part, kick, quit, nick;
+    CommandHolder add, remove, list, info, check, op, clear, change, match_client, shutdown, join, part, kick, quit, nick, mode;
     EventHolder check_event;
     HelpTopicHolder opbothelp, ophelp, checkhelp, matchhelp, addhelp, removehelp, edithelp;
     HelpIndexHolder index;
@@ -670,6 +776,8 @@ struct opbot : CommandHandlerBase<opbot>, Module
         kick = add_handler(filter_command_type("KICK", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
         join = add_handler(filter_command_type("JOIN", sourceinfo::RawIrc),&opbot::irc_join,true);
         nick = add_handler(filter_command_type("NICK", sourceinfo::RawIrc),&opbot::irc_nick,true);
+
+		mode = add_handler(filter_command_type("mode_change", sourceinfo::Internal),&opbot::irc_mode, true, Message::first);
 
         check_event = add_recurring_event(60, &opbot::check_expiry);
 
