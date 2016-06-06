@@ -119,6 +119,22 @@ namespace
 struct opbot : CommandHandlerBase<opbot>, Module
 {
     Value &dno, &old, &lostops;
+	std::vector<std::string> op_commands;
+
+	void op_send(Bot *b, const std::string command)
+	{
+		std::string channelname = b->get_setting("opbot_channel");
+		Membership::ptr mem = b->me()->find_membership(channelname);
+		if (!mem)
+			return;
+
+		if (mem->has_mode('o'))
+		{
+			b->send(command);
+		} else {
+			op_commands.push_back(command);
+		}
+	}
 
     void do_add(const Message *m)
     {
@@ -609,19 +625,24 @@ struct opbot : CommandHandlerBase<opbot>, Module
 				if (!is_protected)
 				{
 					std::string banmask = build_ban_mask(m->source.client);
-					std::string akickmask = (!m->source.client->account().empty()) ? m->source.client->account() : banmask;
+					std::string akickmask = !(m->source.client->account().empty()) ? m->source.client->account() : banmask;
 					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
 					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
 												m->source.name + " !T " + akicktime + " Deopping the bot";
+					std::string opcommand = "PRIVMSG ChanServ :OP " + channelname + " -" + m->source.name + " " + m->bot->nick();
+					std::string kickcommand = "REMOVE " + channelname + " " + m->source.name + " :" + "Banned: Deopping the bot";
 					m->bot->send(akickcommand);
+					m->bot->send(opcommand);
+					add_event(time(NULL), std::bind(&opbot::op_send, this, m->bot, kickcommand));
 
 					std::string dnotime = m->bot->get_setting_with_default("opbot_abuse_dno_time", "30d");
 					do_add_internal(m->bot, banmask, dnotime, "Deopping the bot");
 
 					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Debug, "*** Akicking " + m->source.name + " (bot deopped)");
+				} else {
+					std::string opcommand = "PRIVMSG ChanServ :OP " + channelname;
+					m->bot->send(opcommand);
 				}
-				std::string opcommand = "PRIVMSG ChanServ :OP " + channelname;
-				m->bot->send(opcommand);
 
 				Logger::get_instance()->Log(m->bot, m->source.client, Logger::Warning, "*** " + m->source.name + " has deopped the bot");
 			} else if (!is_protected) {
@@ -629,7 +650,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 				Membership::ptr mem = channel->find_member(m->args[2]);
 				if (mem && m->source.client != mem->client && mem->has_mode('o')) {
 					std::string opcommand = "MODE " + channelname + " -o+o " + m->source.name + " " + m->args[2];
-					m->bot->send(opcommand);
+					add_event(time(NULL), std::bind(&opbot::op_send, this, m->bot, opcommand));
 
 					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Warning, "*** " + m->source.name + " has deopped " + m->args[2]);
 				}
@@ -640,11 +661,15 @@ struct opbot : CommandHandlerBase<opbot>, Module
 				if (!is_protected)
 				{
 					std::string banmask = build_ban_mask(m->source.client);
-					std::string akickmask = (!m->source.client->account().empty()) ? m->source.client->account() : banmask;
+					std::string akickmask = !(m->source.client->account().empty()) ? m->source.client->account() : banmask;
 					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
 					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
 												m->source.name + " !T " + akicktime + " Banning the bot";
+					std::string deopcommand = "PRIVMSG ChanServ :DEOP " + channelname + " " + m->source.name;
+					std::string kickcommand = "REMOVE " + channelname + " " + m->source.name + " :" + "Banned: Banning the bot";
 					m->bot->send(akickcommand);
+					m->bot->send(deopcommand);
+					add_event(time(NULL), std::bind(&opbot::op_send, this, m->bot, kickcommand));
 
 					std::string dnotime = m->bot->get_setting_with_default("opbot_abuse_dno_time", "30d");
 					do_add_internal(m->bot, banmask, dnotime, "Banning the bot");
@@ -652,7 +677,13 @@ struct opbot : CommandHandlerBase<opbot>, Module
 					Logger::get_instance()->Log(m->bot, m->source.client, Logger::Debug, "*** Akicking " + m->source.name + " (bot banned)");
 				}
 
-				std::string opcommand = "PRIVMSG ChanServ :UNBAN " + channelname;
+				std::string unbancommand = "PRIVMSG ChanServ :UNBAN " + channelname;
+				m->bot->send(unbancommand);
+			}
+		} else if (m->args[0] == "add" && m->args[1] == "o" && m->args[2] == m->bot->nick()) {
+			for (int i = 0; i < op_commands.size(); i++)
+			{
+				m->bot->send(op_commands[i]);
 			}
 		}
     }
