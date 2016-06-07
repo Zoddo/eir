@@ -683,6 +683,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 			{
 				m->bot->send(op_commands[i]);
 			}
+			op_commands.clear();
 		}
     }
 
