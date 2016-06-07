@@ -628,7 +628,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 					std::string akickmask = !(m->source.client->account().empty()) ? m->source.client->account() : banmask;
 					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
 					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
-												m->source.name + " !T " + akicktime + " Deopping the bot";
+												akickmask + " !T " + akicktime + " Deopping the bot";
 					std::string opcommand = "PRIVMSG ChanServ :OP " + channelname + " -" + m->source.name + " " + m->bot->nick();
 					std::string kickcommand = "REMOVE " + channelname + " " + m->source.name + " :" + "Banned: Deopping the bot";
 					m->bot->send(akickcommand);
@@ -664,7 +664,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 					std::string akickmask = !(m->source.client->account().empty()) ? m->source.client->account() : banmask;
 					std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
 					std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
-												m->source.name + " !T " + akicktime + " Banning the bot";
+												akickmask + " !T " + akicktime + " Banning the bot";
 					std::string deopcommand = "PRIVMSG ChanServ :DEOP " + channelname + " " + m->source.name;
 					std::string kickcommand = "REMOVE " + channelname + " " + m->source.name + " :" + "Banned: Banning the bot";
 					m->bot->send(akickcommand);
