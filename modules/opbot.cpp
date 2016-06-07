@@ -538,7 +538,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 		if (expires != 0)
 			expires += time(NULL);
 
-		dno.push_back(opentry(b->name(), mask, b->name(), reason, time(NULL), expires));
+		dno.push_back(opentry(b->name(), mask, b->nick(), reason, time(NULL), expires));
 	}
 
 
