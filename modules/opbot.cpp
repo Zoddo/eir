@@ -125,10 +125,8 @@ struct opbot : CommandHandlerBase<opbot>, Module
 	{
 		std::string channelname = b->get_setting("opbot_channel");
 		Membership::ptr mem = b->me()->find_membership(channelname);
-		if (!mem)
-			return;
 
-		if (mem->has_mode('o'))
+		if (mem && mem->has_mode('o'))
 		{
 			b->send(command);
 		} else {
@@ -706,11 +704,44 @@ struct opbot : CommandHandlerBase<opbot>, Module
 
         Membership::ptr mem = m->source.client->find_membership(channelname);
         if (mem && mem->has_mode('o')) {
-            if (m->command == "KICK" && m->source.destination == channelname && m->source.name == "ChanServ")
+            if (m->command == "KICK" && m->source.destination == channelname && m->args.size() > 0)
             {
-                // user was ejected from the channel by ChanServ (akick?)
-				Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + m->source.client->nick()  + "was akicked from channel - will not reop");
-				return;
+				if (m->args[0] == m->bot->nick())
+				{
+					bool is_protected = m->source.client->privs().has_privilege("admin") || m->source.client->privs().has_privilege("opadmin") ||
+										m->source.client->privs().has_privilege("opprotected");
+					
+					if (!is_protected)
+					{
+						std::string banmask = build_ban_mask(m->source.client);
+						std::string akickmask = !(m->source.client->account().empty()) ? m->source.client->account() : banmask;
+						std::string akicktime = m->bot->get_setting_with_default("opbot_abuse_akick_time", "60");
+						std::string akickcommand = "PRIVMSG ChanServ :AKICK " + channelname + " ADD " +
+													akickmask + " !T " + akicktime + " Kicking the bot";
+						std::string deopcommand = "PRIVMSG ChanServ :DEOP " + channelname + " " + m->source.name;
+						std::string kickcommand = "REMOVE " + channelname + " " + m->source.name + " :" + "Banned: Kicking the bot";
+						m->bot->send(akickcommand);
+						m->bot->send(deopcommand);
+						add_event(time(NULL), std::bind(&opbot::op_send, this, m->bot, kickcommand));
+
+						std::string dnotime = m->bot->get_setting_with_default("opbot_abuse_dno_time", "30d");
+						do_add_internal(m->bot, banmask, dnotime, "Kicking the bot");
+
+						Logger::get_instance()->Log(m->bot, m->source.client, Logger::Debug, "*** Akicking " + m->source.name + " (bot kicked)");
+					}
+
+					std::string unbancommand = "PRIVMSG ChanServ :UNBAN " + channelname; // in case of...
+					std::string joincommand = "JOIN " + channelname;
+					m->bot->send(unbancommand);
+					m->bot->send(joincommand);
+					add_event(time(NULL)+3, std::bind(&eir::Bot::send, m->bot, joincommand)); // if banned
+					
+					return;
+				} else if (m->source.name == "ChanServ") {
+					// user was ejected from the channel by ChanServ (akick?)
+					Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + m->args[0]  + "was akicked from channel - will not reop");
+					return;
+				}
             } else if (m->command == "QUIT") {
                 if (!m->source.destination.empty())
                 {
