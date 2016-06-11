@@ -711,7 +711,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 				{
 					bool is_protected = m->source.client->privs().has_privilege("admin") || m->source.client->privs().has_privilege("opadmin") ||
 										m->source.client->privs().has_privilege("opprotected");
-					
+
 					if (!is_protected)
 					{
 						std::string banmask = build_ban_mask(m->source.client);
@@ -736,7 +736,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 					m->bot->send(unbancommand);
 					m->bot->send(joincommand);
 					add_event(time(NULL)+3, std::bind(&eir::Bot::send, m->bot, joincommand)); // if banned
-					
+
 					return;
 				} else if (m->source.name == "ChanServ") {
 					// user was ejected from the channel by ChanServ (akick?)
@@ -759,8 +759,17 @@ struct opbot : CommandHandlerBase<opbot>, Module
                 return;
             }
             // User left the channel or network normally while opped - put them on the lost ops list
+            std::string nick = m->source.client->nick();
             std::string mask = m->source.raw;
-            mask=build_reop_mask(m->source.client);
+			if (m->command == "KICK")
+			{
+				Membership::ptr mm = channel->find_member(m->args[0]);
+				if (!mm) return;
+				nick=mm->client->nick();
+				mask=build_reop_mask(mm->client);
+			} else {
+				mask=build_reop_mask(m->source.client);
+			}
             if (!mask.empty())
             {
                 // check we don't already have this mask
@@ -773,7 +782,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
                     }
                 }
                 lostops.push_back(lostopentry(m->bot->name(), mask, get_reop_expiry(m->bot)+time(NULL)));
-                Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + m->source.client->nick() + "(" + mask + ")" + " left " + channelname + " with op");
+                Logger::get_instance()->Log(m->bot, NULL, Logger::Debug, "*** " + nick + "(" + mask + ")" + " left " + channelname + " with op");
             }
         }
     }
