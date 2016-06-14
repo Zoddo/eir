@@ -764,7 +764,7 @@ struct opbot : CommandHandlerBase<opbot>, Module
 			if (m->command == "KICK")
 			{
 				Membership::ptr mm = channel->find_member(m->args[0]);
-				if (!mm) return;
+				if (!mm || !mm->has_mode('o')) return;
 				nick=mm->client->nick();
 				mask=build_reop_mask(mm->client);
 			} else {
