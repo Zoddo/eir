@@ -53,27 +53,27 @@ namespace
         "do not match any of those entries.\n"
         "If voicebot_enable_revoicing is set users who leave the channel while voiced will be revoiced automatically "
         "should they return before the time specified in revoice_expiry has elapsed.\n "
-        "Available voicebot commands are: voice check match add remove edit.\n "
+        "Available voicebot commands are: voice voice_check dnv_match dnv_add dnv_remove dnv_edit.\n "
         "Relevant settings are \037voicebot_channel\037, \037voicebot_admin_channel\037, \037default_voice_expiry\037, "
         "\037voicebot_enable_revoicing\037, \037revoice_expiry\037 and \037voice_time_format\037.";
     const char *help_voice =
         "\002voice\002. Voices all users who are in \037voicebot_channel\037 and do not match a DNV list entry.";
     const char *help_check =
-        "\002check\002. Displays a list of users in \037voicebot_channel\037 who would be voiced by the \002voice\002 "
+        "\002voice_check\002. Displays a list of users in \037voicebot_channel\037 who would be voiced by the \002voice\002 "
         "command, and a list of those unvoiced users who would not be voiced.";
     const char *help_match =
-        "\002match <mask>|<nick>\002. Displays the DNV list entries that match the given argument. If the nickname "
+        "\002dnv_match <mask>|<nick>\002. Displays the DNV list entries that match the given argument. If the nickname "
         "of a currently visible user is given, entries matching that user are shown. Otherwise, it is interpreted as "
         "a hostmask.";
     const char *help_add =
-        "\002add <mask> [time] <reason>\002. Adds a DNV entry <mask>, expiring in <time>, with comment <reason>.\n"
+        "\002dnv_add <mask> [~time] <reason>\002. Adds a DNV entry <mask>, expiring in <time>, with comment <reason>.\n"
         "If \037time\037 is not specified, the default_voice_expiry setting is used. \037time\037 may "
         "be zero, in which case the entry will not expire. \037reason\037 may be empty.";
     const char *help_remove =
-        "\002remove <mask>\002. Removes all entries from the DNV list that match the given mask.\n"
+        "\002dnv_remove <mask>\002. Removes all entries from the DNV list that match the given mask.\n"
         "Note that 'remove *' will clear the list.";
     const char *help_edit =
-        "\002edit <mask> [time] [reason]\002. Edits the expiry time and/or comment of an existing DNV entry. If "
+        "\002dnv_edit <mask> [~time] [reason]\002. Edits the expiry time and/or comment of an existing DNV entry. If "
         "\037time\037 is given but \037reason\037 is not, then only the expiry will be changed. Similarly if "
         "\037reason\037 is given but \037time\037 is not, then the expiry will be left unchanged.";
 
@@ -636,26 +636,26 @@ struct voicebot : CommandHandlerBase<voicebot>, Module
           lostvoices(GlobalSettingsManager::get_instance()->get("voicebot:lostvoices")),
           voicebothelp("voicebot", "voiceadmin", help_voicebot),
           voicehelp("voice", "voiceadmin", help_voice),
-          checkhelp("check", "voiceadmin", help_check),
-          matchhelp("match", "voiceadmin", help_match),
-          addhelp("add", "voiceadmin", help_add),
-          removehelp("remove", "voiceadmin", help_remove),
-          edithelp("edit", "voiceadmin", help_edit),
-          index("voicebot", "voiceadmin")
+          checkhelp("voice_check", "voiceadmin", help_check),
+          matchhelp("dnv_match", "voiceadmin", help_match),
+          addhelp("dnv_add", "voiceadmin", help_add),
+          removehelp("dnv_remove", "voiceadmin", help_remove),
+          edithelp("dnv_edit", "voiceadmin", help_edit),
+          index("dnv_voicebot", "voiceadmin")
     {
-        add = add_handler(filter_command_type("add", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        add = add_handler(filter_command_type("dnv_add", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_add);
-        remove = add_handler(filter_command_type("remove", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        remove = add_handler(filter_command_type("dnv_remove", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_remove);
-        list = add_handler(filter_command_type("list", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        list = add_handler(filter_command_type("dnv_list", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_list);
-        check = add_handler(filter_command_type("check", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        check = add_handler(filter_command_type("voice_check", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_check);
         voice = add_handler(filter_command_type("voice", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_voice);
-        change = add_handler(filter_command_type("edit", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        change = add_handler(filter_command_type("dnv_edit", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_change);
-        match_client = add_handler(filter_command_type("match", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
+        match_client = add_handler(filter_command_type("dnv_match", sourceinfo::IrcCommand).requires_privilege("voiceadmin"),
                             &voicebot::do_match);
         quit = add_handler(filter_command_type("QUIT", sourceinfo::RawIrc),&voicebot::irc_depart, true, Message::first);
         part = add_handler(filter_command_type("PART", sourceinfo::RawIrc),&voicebot::irc_depart, true, Message::first);

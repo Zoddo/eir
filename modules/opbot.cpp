@@ -53,27 +53,27 @@ namespace
         "do not match any of those entries.\n"
         "If opbot_enable_reopping is set users who leave the channel while opped will be reopped automatically "
         "should they return before the time specified in reop_expiry has elapsed.\n "
-        "Available opbot commands are: op check match add remove edit.\n "
+        "Available opbot commands are: op op_check dno_match dno_add dno_remove dno_edit.\n "
         "Relevant settings are \037opbot_channel\037, \037opbot_admin_channel\037, \037default_op_expiry\037, "
         "\037opbot_enable_reopping\037, \037reop_expiry\037 and \037op_time_format\037.";
     const char *help_op =
         "\002op\002. Ops all users who are in \037opbot_channel\037 and do not match a DNO list entry.";
     const char *help_check =
-        "\002check\002. Displays a list of users in \037opbot_channel\037 who would be opped by the \002op\002 "
+        "\002op_check\002. Displays a list of users in \037opbot_channel\037 who would be opped by the \002op\002 "
         "command, and a list of those unopped users who would not be opped.";
     const char *help_match =
-        "\002match <mask>|<nick>\002. Displays the DNO list entries that match the given argument. If the nickname "
+        "\002dno_match <mask>|<nick>\002. Displays the DNO list entries that match the given argument. If the nickname "
         "of a currently visible user is given, entries matching that user are shown. Otherwise, it is interpreted as "
         "a hostmask.";
     const char *help_add =
-        "\002add <mask> [~time] <reason>\002. Adds a DNO entry <mask>, expiring in <time>, with comment <reason>.\n"
+        "\002dno_add <mask> [~time] <reason>\002. Adds a DNO entry <mask>, expiring in <time>, with comment <reason>.\n"
         "If \037time\037 is not specified, the default_op_expiry setting is used. \037time\037 may "
         "be zero, in which case the entry will not expire. \037reason\037 may be empty.";
     const char *help_remove =
-        "\002remove <mask>\002. Removes all entries from the DNO list that match the given mask.\n"
+        "\002dno_remove <mask>\002. Removes all entries from the DNO list that match the given mask.\n"
         "Note that 'remove *' will clear the list.";
     const char *help_edit =
-        "\002edit <mask> [~time] [reason]\002. Edits the expiry time and/or comment of an existing DNO entry. If "
+        "\002dno_edit <mask> [~time] [reason]\002. Edits the expiry time and/or comment of an existing DNO entry. If "
         "\037time\037 is given but \037reason\037 is not, then only the expiry will be changed. Similarly if "
         "\037reason\037 is given but \037time\037 is not, then the expiry will be left unchanged.";
 
@@ -822,26 +822,26 @@ struct opbot : CommandHandlerBase<opbot>, Module
           lostops(GlobalSettingsManager::get_instance()->get("opbot:lostops")),
           opbothelp("opbot", "opadmin", help_opbot),
           ophelp("op", "opadmin", help_op),
-          checkhelp("check", "opadmin", help_check),
-          matchhelp("match", "opadmin", help_match),
-          addhelp("add", "opadmin", help_add),
-          removehelp("remove", "opadmin", help_remove),
-          edithelp("edit", "opadmin", help_edit),
+          checkhelp("op_check", "opadmin", help_check),
+          matchhelp("dno_match", "opadmin", help_match),
+          addhelp("dno_add", "opadmin", help_add),
+          removehelp("dno_remove", "opadmin", help_remove),
+          edithelp("dno_edit", "opadmin", help_edit),
           index("opbot", "opadmin")
     {
-        add = add_handler(filter_command_type("add", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        add = add_handler(filter_command_type("dno_add", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_add);
-        remove = add_handler(filter_command_type("remove", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        remove = add_handler(filter_command_type("dno_remove", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_remove);
-        list = add_handler(filter_command_type("list", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        list = add_handler(filter_command_type("dno_list", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_list);
-        check = add_handler(filter_command_type("check", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        check = add_handler(filter_command_type("op_check", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_check);
         op = add_handler(filter_command_type("op", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_op);
-        change = add_handler(filter_command_type("edit", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        change = add_handler(filter_command_type("dno_edit", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_change);
-        match_client = add_handler(filter_command_type("match", sourceinfo::IrcCommand).requires_privilege("opadmin"),
+        match_client = add_handler(filter_command_type("dno_match", sourceinfo::IrcCommand).requires_privilege("opadmin"),
                             &opbot::do_match);
         quit = add_handler(filter_command_type("QUIT", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
         part = add_handler(filter_command_type("PART", sourceinfo::RawIrc),&opbot::irc_depart, true, Message::first);
